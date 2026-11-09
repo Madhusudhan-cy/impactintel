@@ -1,0 +1,872 @@
+# INCREMENT 4 — CONTINUE EXISTING IMPLEMENTATION
+# AI-Powered Repository Impact Intelligence System
+## Conversational Repository Intelligence using Hybrid Graph RAG, BM25, Vector Search and LangGraph
+
+You are continuing development of an existing project called:
+
+**AI-Powered Repository Impact Intelligence System**
+
+Your task is to implement Increment 4: Conversational Repository Intelligence.
+
+Assume that Increments 1, 2, and 3 have already been developed in the existing codebase. However, you must inspect the actual implementation and verify what works before depending on it.
+
+**Do not create a new project. Do not repeat the project overview. Do not rewrite working modules. Continue from the existing codebase.**
+
+---
+
+# PART 1: INSPECT THE EXISTING IMPLEMENTATION
+
+Before writing any code:
+
+1. Inspect the complete folder structure.
+2. Read the existing graph schema.
+3. Understand the JavaScript/TypeScript extractor.
+4. Understand the Python extractor.
+5. Understand function and class extraction.
+6. Understand function-call relationships.
+7. Understand React component relationships.
+8. Understand API route extraction.
+9. Understand test relationship extraction.
+10. Understand NetworkX graph construction and traversal.
+11. Understand PostgreSQL database models.
+12. Understand repository indexing.
+13. Understand GitHub App integration.
+14. Understand PR analysis.
+15. Understand evidence collection.
+16. Run the existing automated tests.
+
+Prepare a concise implementation-status report.
+
+Identify:
+- What is implemented.
+- What is working.
+- What is partially implemented.
+- What is missing.
+- What needs to change for RAG integration.
+
+Preserve the existing implementation.
+
+If essential previous functionality is incomplete, explain the issue before proceeding.
+
+---
+
+# PART 2: OBJECTIVE OF INCREMENT 4
+
+## 1. What are we building?
+
+We are adding a conversational interface that allows developers and reviewers to ask natural-language questions about their connected GitHub repositories.
+
+Examples:
+
+- What does `process_payment()` do?
+- Which functions call `process_payment()`?
+- Which components depend on PaymentService?
+- Explain the payment architecture.
+- Where is payment failure handled?
+- What happens when a user logs in?
+- Which API route handles payment requests?
+- What tests are related to payment validation?
+- Why was Checkout.jsx identified as affected in PR #142?
+- What changed in the previous Pull Request?
+
+The system must answer using actual repository information.
+
+It must not behave like a generic chatbot that guesses code behavior.
+
+## 2. Central principle
+
+**Retrieve the right code, understand its structural relationships, generate an evidence-grounded explanation, and verify important claims before returning the answer.**
+
+Our RAG architecture consists of:
+
+1. Query understanding.
+2. Graph RAG retrieval.
+3. BM25 keyword retrieval.
+4. Vector similarity retrieval.
+5. Hybrid result fusion.
+6. Optional reranking.
+7. LLM answer generation.
+8. Evidence-based claim verification.
+9. LangGraph workflow orchestration.
+10. Short-term conversational memory.
+
+---
+
+# PART 3: TECHNOLOGY STACK
+
+Continue using the existing approved technologies.
+
+| Component | Technology |
+|---|---|
+| Backend | Python + FastAPI |
+| Database | PostgreSQL |
+| Vector storage | pgvector |
+| Graph | NetworkX |
+| Code parsing | Existing Tree-sitter and Python AST extractors |
+| Keyword retrieval | BM25 |
+| Structural retrieval | Graph RAG |
+| Embeddings | Locally hosted embedding model |
+| LLM orchestration | LangGraph |
+| LLM integration | LangChain where useful |
+| Frontend | React + Vite |
+| Routing | React Router |
+| API state | TanStack Query |
+| Styling | Tailwind CSS |
+
+Do not introduce Neo4j, MongoDB, Redis, Kubernetes, AWS, Azure, or other unapproved infrastructure.
+
+---
+
+# PART 4: REPOSITORY DATA PREPARATION
+
+## 3. Prepare repository content for retrieval
+
+The system already indexes repository source code and builds a Code Knowledge Graph.
+
+Now prepare that information for conversational retrieval.
+
+Implement a code chunking and metadata extraction module.
+
+### Chunking requirements
+
+Split source code into meaningful units.
+
+Prefer:
+
+- Function-level chunks.
+- Class-level chunks.
+- Method-level chunks.
+- Component-level chunks.
+- API route and handler chunks.
+- File-level chunks when finer-grained extraction is unavailable.
+
+Avoid arbitrary fixed-size splitting wherever a meaningful code boundary is available.
+
+Handle large functions or classes appropriately.
+
+Preserve relationships between chunks and their graph nodes.
+
+### Metadata
+
+Each chunk should retain useful metadata:
+
+- Repository ID.
+- File path.
+- Programming language.
+- Symbol name.
+- Symbol type.
+- Start line.
+- End line.
+- Commit SHA.
+- Associated graph node ID.
+- Associated parent file.
+- Relevant imports.
+- Extractor information.
+
+Do not discard source information during chunking.
+
+Only retrieve content belonging to the currently selected repository.
+
+---
+
+# PART 5: VECTOR EMBEDDINGS AND PGVECTOR
+
+## 4. Embedding generation
+
+Convert indexed code chunks into vector embeddings.
+
+Use a suitable locally hosted embedding model.
+
+The exact model and runtime have not yet been finalized.
+
+Evaluate appropriate options based on:
+
+- Code retrieval quality.
+- Natural-language-to-code retrieval.
+- Local execution requirements.
+- Hardware and memory requirements.
+- Model size.
+- Embedding dimensions.
+- Compatibility with pgvector.
+
+Recommend an appropriate model and explain the trade-offs before selecting it.
+
+Do not assume that a general-purpose text embedding model is automatically the best option for source code.
+
+### Privacy requirements
+
+Repository content may contain proprietary code.
+
+Therefore:
+
+- Prefer local embedding generation.
+- Do not send source code to external embedding APIs without approval.
+- Avoid sending proprietary repository content to external LLM providers without approval.
+- Consider prompts, retrieved context, embeddings, logs, and telemetry in the privacy design.
+
+### Storage
+
+Use PostgreSQL with pgvector.
+
+Store:
+
+- Code chunk ID.
+- Repository ID.
+- Chunk content or appropriate reference.
+- Embedding vector.
+- Metadata.
+- File path.
+- Symbol information.
+- Commit SHA.
+
+Implement similarity retrieval scoped to the selected repository.
+
+Handle embedding model/version changes appropriately.
+
+Do not silently mix embeddings generated by incompatible models or dimensions.
+
+---
+
+# PART 6: BM25 KEYWORD RETRIEVAL
+
+## 5. Implement BM25
+
+BM25 will retrieve code based on exact keywords and identifiers.
+
+It is particularly useful for:
+
+- Function names.
+- Class names.
+- Variable names.
+- File paths.
+- API routes.
+- Error messages.
+- Exact code identifiers.
+
+Example:
+
+User asks:
+
+"Find all usages of process_payment."
+
+BM25 should retrieve matching indexed code chunks.
+
+Requirements:
+
+1. Build a searchable index from repository code chunks.
+2. Preserve repository and file metadata.
+3. Rank results using BM25.
+4. Support exact identifier searches.
+5. Scope retrieval to the selected repository.
+6. Return source file and line information.
+7. Handle index updates after repository re-indexing.
+
+Keep BM25 retrieval independent of vector retrieval.
+
+Choose an appropriate lightweight implementation and explain why.
+
+Do not add unnecessary search infrastructure.
+
+---
+
+# PART 7: GRAPH RAG RETRIEVAL
+
+## 6. Implement Graph RAG
+
+Reuse the existing Code Knowledge Graph.
+
+Do not create a second independent graph.
+
+Graph RAG retrieves structural repository context.
+
+It should support questions such as:
+
+- Which functions call this function?
+- Which functions does this method call?
+- Which components render this component?
+- Which API route handles this request?
+- Which tests are connected to this function?
+- What dependency path connects these components?
+- Which components depend on this module?
+
+### Retrieval workflow
+
+1. Identify relevant code entities from the query.
+2. Locate their graph nodes.
+3. Traverse relevant relationships.
+4. Retrieve connected nodes.
+5. Retrieve relationship evidence.
+6. Retrieve source-code chunks for the selected nodes.
+7. Return structured graph context.
+
+Support the relationship types already implemented:
+
+- imports
+- defines
+- calls
+- renders
+- exposes
+- handled_by
+- fetches
+- tests
+
+Respect graph direction.
+
+Stored dependency relationships follow:
+
+`Dependent → Dependency`
+
+For queries asking who depends on an entity, use reverse traversal.
+
+For queries asking what an entity depends on, follow outgoing dependency relationships.
+
+Do not confuse these two directions.
+
+Graph RAG must preserve:
+
+- Relationship type.
+- Source node.
+- Target node.
+- File path.
+- Line number where available.
+- Evidence.
+- Confidence.
+
+Do not invent graph relationships.
+
+---
+
+# PART 8: HYBRID RETRIEVAL
+
+## 7. Combine all three retrieval mechanisms
+
+This is the central retrieval component of Increment 4.
+
+Use:
+
+1. Graph RAG.
+2. BM25.
+3. Vector Search.
+
+Each retrieval method provides a different type of information.
+
+| Retrieval | Purpose |
+|---|---|
+| Graph RAG | Structural code relationships |
+| BM25 | Exact identifiers and keywords |
+| Vector Search | Semantic code relevance |
+
+### Example
+
+User asks:
+
+"Where does the application handle unsuccessful payments, and which components depend on that logic?"
+
+Possible retrieval results:
+
+**Graph RAG**
+- `Checkout → process_payment`
+- `process_payment → validate_payment`
+
+**BM25**
+- `PaymentDeclinedError`
+- `process_payment`
+- `log_failure`
+
+**Vector Search**
+- Payment failure exception handling.
+- Failed transaction response generation.
+- Error logging implementation.
+
+The results must be combined into a unified evidence collection.
+
+### Result fusion
+
+Use Reciprocal Rank Fusion (RRF) as the initial fusion strategy.
+
+Formula:
+
+RRF(d) = Σ 1 / (k + rank(d))
+
+Where:
+- d is a retrieved document or code chunk.
+- k is a smoothing constant.
+- rank(d) is the document's position in a retrieval result list.
+
+Requirements:
+
+- Deduplicate chunks.
+- Preserve their source metadata.
+- Preserve which retrieval methods found each chunk.
+- Combine rankings.
+- Return the most relevant evidence.
+
+Do not directly add raw BM25 and vector similarity scores without considering their different scoring scales.
+
+---
+
+# PART 9: OPTIONAL RERANKING
+
+## 8. Reranker
+
+After fusion, optionally rerank the retrieved evidence.
+
+A reranker should improve the relevance of retrieved code chunks to the original query.
+
+Example:
+
+Query:
+
+"What happens when payment validation fails?"
+
+Retrieved results may contain:
+
+- Payment validation function.
+- Payment exception handling.
+- Database connection.
+- User authentication.
+- Payment gateway integration.
+
+The reranker should prioritize relevant code.
+
+Keep this feature optional.
+
+First evaluate hybrid retrieval without a reranker.
+
+Only introduce reranking if there is a measurable improvement worth the additional complexity.
+
+---
+
+# PART 10: LLM ANSWER GENERATION
+
+## 9. Integrate the LLM
+
+After retrieval and fusion, pass the selected evidence to the LLM.
+
+The LLM receives:
+
+- User question.
+- Repository context.
+- Retrieved source-code chunks.
+- Graph relationships.
+- File paths.
+- Line references.
+- Conversation history where relevant.
+
+The LLM generates a natural-language answer.
+
+### Answer requirements
+
+1. Use repository evidence.
+2. Do not invent functions, classes, variables, routes, or relationships.
+3. Do not make unsupported architectural claims.
+4. Include source references where available.
+5. Explain uncertainty when evidence is incomplete.
+6. Clearly distinguish extracted structural relationships from inferred explanations.
+7. State when the repository does not contain enough information.
+
+### Local LLM requirement
+
+We prefer a locally hosted or company-controlled LLM.
+
+The exact model and inference runtime must be evaluated before implementation.
+
+Recommend suitable models based on:
+
+- Code understanding.
+- Reasoning quality.
+- Local hardware requirements.
+- Context window.
+- Latency.
+- Privacy.
+
+Do not assume a particular model is finalized.
+
+Do not silently substitute an external API.
+
+---
+
+# PART 11: EVIDENCE-BASED CLAIM VERIFICATION
+
+## 10. Implement answer verification
+
+The generated answer must be checked against retrieved repository evidence.
+
+Example generated answer:
+
+1. `process_payment()` calls `validate_payment()`.
+2. Payment failures are logged using `log_failure()`.
+3. The application uses Stripe for all transactions.
+
+Suppose the retrieved evidence supports claims 1 and 2 but does not establish claim 3.
+
+The verifier must flag claim 3 as unsupported.
+
+Implement verification statuses such as:
+
+- Supported.
+- Partially supported.
+- Unsupported.
+
+Possible workflow:
+
+1. Generate answer.
+2. Extract important factual claims.
+3. Compare claims with retrieved evidence.
+4. Identify unsupported claims.
+5. Retry retrieval or generation when useful.
+6. Return a corrected answer with appropriate qualifications.
+
+Do not treat LLM confidence alone as proof.
+
+Limit retry attempts to prevent infinite loops.
+
+If evidence remains insufficient, clearly communicate that limitation rather than fabricating an answer.
+
+---
+
+# PART 12: LANGGRAPH WORKFLOW
+
+## 11. Implement LangGraph orchestration
+
+LangGraph coordinates the complete repository Q&A workflow.
+
+It does not replace:
+
+- NetworkX.
+- Graph RAG.
+- BM25.
+- Vector search.
+- PostgreSQL.
+- The embedding model.
+- The LLM.
+
+### Proposed workflow
+
+Query  
+→ Query Understanding  
+→ Parallel Retrieval  
+→ Graph RAG  
+→ BM25  
+→ Vector Search  
+→ Result Fusion  
+→ Optional Reranking  
+→ LLM Generation  
+→ Evidence Verification  
+→ Conditional Retry  
+→ Final Answer
+
+Implement parallel retrieval where practical.
+
+### LangGraph state
+
+The workflow state should contain fields such as:
+
+- User query.
+- Repository ID.
+- Conversation ID.
+- Conversation history.
+- Identified entities.
+- Graph retrieval results.
+- BM25 results.
+- Vector search results.
+- Fused evidence.
+- Reranked evidence.
+- Generated answer.
+- Verification result.
+- Retry count.
+- Final response.
+
+Keep nodes modular.
+
+Avoid putting the entire RAG pipeline into one enormous function.
+
+---
+
+# PART 13: CONVERSATIONAL MEMORY
+
+## 12. Short-term conversational memory
+
+Support follow-up questions.
+
+Example:
+
+User: What calls `process_payment()`?
+
+Assistant: Checkout and PaymentService call it.
+
+User: What does the first one do?
+
+The system should understand that "the first one" refers to Checkout.
+
+Requirements:
+
+- Maintain conversation context.
+- Associate conversations with users and repositories.
+- Prevent accidental cross-repository context leakage.
+- Support follow-up questions.
+- Allow a new conversation to start without inheriting unrelated context.
+
+Use appropriate LangGraph state persistence or a suitable database-backed mechanism.
+
+Do not confuse short-term chat memory with persistent repository knowledge.
+
+## 13. Persistent repository knowledge
+
+Reuse the existing PostgreSQL repository knowledge:
+
+- Repository metadata.
+- Graph nodes and edges.
+- Indexed source-code metadata.
+- Embeddings.
+- Indexed branch and commit SHA.
+- PR analyses.
+- Evidence.
+
+Do not duplicate existing repository data unnecessarily.
+
+---
+
+# PART 14: FASTAPI CHAT ENDPOINTS
+
+## 14. Backend API integration
+
+Create repository chat endpoints using the existing FastAPI application.
+
+Expected capabilities:
+
+- Start a conversation.
+- Submit a question.
+- Retrieve an answer.
+- Continue an existing conversation.
+- Retrieve conversation history.
+- Associate conversations with repositories.
+- Retrieve answer evidence.
+
+Design appropriate request and response schemas.
+
+Use the existing authentication and repository authorization model.
+
+Ensure users can only query repositories they are authorized to access.
+
+Do not expose private source code or conversations across unauthorized users.
+
+---
+
+# PART 15: TESTING AND EVALUATION
+
+## 15. Retrieval testing
+
+Build a small evaluation dataset from the existing sample repository.
+
+Include questions such as:
+
+- Where is `process_payment()` defined?
+- Which functions call `validate_payment()`?
+- What does PaymentService depend on?
+- Where are payment failures handled?
+- Which tests cover payment processing?
+- Which API route handles payment requests?
+- Explain the checkout workflow.
+
+For each question, define expected relevant files, symbols, relationships, or evidence.
+
+Evaluate:
+
+- BM25 retrieval quality.
+- Vector retrieval quality.
+- Graph retrieval correctness.
+- Hybrid retrieval quality.
+- Evidence relevance.
+- Answer grounding.
+- Claim verification.
+
+Do not claim the hybrid pipeline is better than individual retrieval methods without testing it.
+
+## 16. Automated tests
+
+Use pytest.
+
+Test:
+
+- Chunking.
+- Metadata preservation.
+- Embedding generation and storage.
+- Repository-scoped vector search.
+- BM25 ranking.
+- Graph RAG traversal.
+- Reverse dependency retrieval.
+- Forward dependency retrieval.
+- Result fusion.
+- Duplicate removal.
+- Evidence preservation.
+- LangGraph state transitions.
+- Verification behavior.
+- Retry limits.
+- Conversation context.
+- Repository authorization boundaries.
+
+Use mocks for external model or GitHub dependencies when appropriate.
+
+Do not require external network access for ordinary unit tests.
+
+---
+
+# PART 16: IMPLEMENTATION ORDER
+
+Implement Increment 4 in this order.
+
+### Phase 1: Codebase inspection
+
+Inspect all previous increments and verify existing functionality.
+
+### Phase 2: Code chunking and metadata
+
+Prepare repository code and graph entities for retrieval.
+
+### Phase 3: Embedding model selection
+
+Evaluate local embedding models and select one after discussing trade-offs.
+
+### Phase 4: pgvector integration
+
+Store embeddings and implement repository-scoped vector retrieval.
+
+### Phase 5: BM25 retrieval
+
+Build keyword indexing and retrieval.
+
+### Phase 6: Graph RAG
+
+Implement graph-based contextual retrieval using the existing Code Knowledge Graph.
+
+### Phase 7: Hybrid retrieval and fusion
+
+Combine all three retrieval methods using RRF.
+
+### Phase 8: Reranking evaluation
+
+Evaluate whether reranking is necessary.
+
+### Phase 9: Local LLM integration
+
+Select and integrate an appropriate local/company-controlled model.
+
+### Phase 10: Answer generation and verification
+
+Implement evidence-grounded generation and claim verification.
+
+### Phase 11: LangGraph orchestration
+
+Connect the workflow and implement conditional retry.
+
+### Phase 12: Conversational memory
+
+Implement short-term conversation context.
+
+### Phase 13: FastAPI integration
+
+Expose repository chat through backend endpoints.
+
+### Phase 14: End-to-end evaluation
+
+Test the complete pipeline against the sample repository.
+
+---
+
+# PART 17: PRIVACY AND SECURITY REQUIREMENTS
+
+Repository source code may contain proprietary information.
+
+Therefore:
+
+1. Prefer local embedding generation.
+2. Prefer local/company-controlled LLM inference.
+3. Do not transmit repository code to external services without approval.
+4. Protect API endpoints.
+5. Enforce repository access authorization.
+6. Scope retrieval to the selected repository.
+7. Prevent cross-user and cross-repository data leakage.
+8. Protect conversation history.
+9. Avoid logging full source-code chunks unnecessarily.
+10. Store credentials securely.
+11. Keep database access controlled.
+
+Local inference does not automatically guarantee privacy. Review all data flows, including embeddings, prompts, logs, and retrieval.
+
+---
+
+# PART 18: DEFINITION OF DONE
+
+Increment 4 is complete when:
+
+- Repository code can be chunked meaningfully.
+- Code metadata is preserved.
+- Local embeddings can be generated.
+- Embeddings are stored in pgvector.
+- Vector retrieval works.
+- BM25 retrieval works.
+- Graph RAG works using the existing graph.
+- Hybrid retrieval combines all three methods.
+- RRF ranking works.
+- Duplicate results are handled.
+- Evidence metadata is preserved.
+- The selected LLM can generate repository-grounded answers.
+- Important claims are verified against evidence.
+- LangGraph orchestrates the workflow.
+- Retry logic has a bounded number of attempts.
+- Short-term conversational memory works.
+- FastAPI exposes the chat functionality.
+- Repository authorization is enforced.
+- Automated retrieval and answer tests pass.
+- End-to-end repository Q&A works.
+
+---
+
+# PART 19: STRICT DEVELOPMENT RULES
+
+1. Continue from the actual existing codebase.
+2. Never create a second independent graph architecture.
+3. Reuse the existing Code Knowledge Graph.
+4. Reuse existing PostgreSQL repository data.
+5. Do not reimplement existing GitHub functionality.
+6. Keep Graph RAG, BM25, and vector search as separate retrieval modules.
+7. Combine them only in the hybrid retrieval stage.
+8. LangGraph orchestrates the workflow; it does not replace retrieval engines.
+9. The LLM explains evidence; it does not invent structural relationships.
+10. Preserve evidence and source locations.
+11. Never claim unsupported code relationships.
+12. Keep repository privacy as a primary design constraint.
+13. Do not introduce unapproved technologies.
+14. Do not implement the React dashboard in this increment.
+15. Do not dump all implementation code in one response.
+16. Implement one phase at a time.
+17. Provide exact file paths, Linux commands, dependencies, and tests.
+18. Verify previous increments after important changes.
+19. Never claim a test passed without executing it.
+20. Ask before finalizing technical decisions that have not yet been approved.
+
+---
+
+# YOUR FIRST ACTION
+
+Inspect the existing project and report:
+
+1. Current folder structure.
+2. Existing graph schema and supported relationships.
+3. Existing PostgreSQL schema.
+4. Existing repository indexing pipeline.
+5. Existing code extraction capabilities.
+6. Existing test results.
+7. Exact modules that can be reused for RAG.
+8. Missing functionality required for Increment 4.
+
+Then begin with **Phase 1: Codebase inspection and retrieval architecture preparation**.
+
+Do not give me a generic overview of the project.
+
+Do not immediately install every AI dependency or generate the entire RAG implementation.
+
+First understand the existing implementation, then build the RAG pipeline incrementally.
+
+**The goal is a working, privacy-conscious, evidence-grounded conversational repository intelligence system—not simply a chatbot that sends source code to an LLM.**

@@ -1,0 +1,25 @@
+I approve all 6 targeted fixes. Please proceed with implementation, subject to the following conditions:
+
+1. Root .gitignore: Ensure .env files, private keys, SQLite databases, node_modules, frontend dist and other generated files are excluded. Do not remove or overwrite existing useful ignore rules.
+
+2. Vercel SPA rewrites: Add the required configuration without interfering with existing Vite assets or API requests.
+
+3. CORS: Read FRONTEND_URL and CORS_ORIGINS from environment variables. Allow only explicitly configured trusted origins. Preserve secure credential handling.
+
+4. Neon PostgreSQL and pgvector: Normalize database connection URLs according to the existing database driver and configure appropriate pooling. Create the vector extension only if supported and required by the existing implementation. Handle database startup and migration errors explicitly.
+
+5. Path import: Add the missing pathlib Path import without unrelated changes.
+
+6. Remote repository ingestion: Implement secure remote repository retrieval using temporary directories. Validate GitHub repository access through the authorized GitHub App. Include safe tarball extraction, download timeouts, repository size and file-count limits, automatic temporary-directory cleanup, and exclusion of generated and irrelevant files. Track the exact repository branch and commit SHA. Ensure graph data remains isolated by repository ID.
+
+Additional requirements:
+- Inspect existing implementations before modifying files.
+- Preserve existing application architecture and functionality.
+- Do not introduce unnecessary dependencies.
+- Do not hardcode credentials or expose secrets.
+- Do not replace real functionality with mock implementations.
+- Run existing tests and add relevant tests for the new behavior.
+- Run frontend production build and backend tests.
+- Report every modified file, commands executed, test results, and any remaining deployment requirements.
+
+Please implement these changes directly in the existing project.

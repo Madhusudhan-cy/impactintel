@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #F5FAFA;
+    --bg-card: #FFFFFF;
+    --color-aqua: #16B89A;
+    --color-aqua-deep: #087F70;
+    --color-aqua-soft: #DDF7EF;
+    --color-blue: #55BDEB;
+    --color-blue-deep: #258FC7;
+    --color-blue-soft: #E2F4FC;
+    --color-text: #172B35;
+    --color-text-muted: #6B818B;
+    --color-border: #E1ECEE;
+  }
+
+  body {
+    background-color: #F5FAFA;
+    color: #172B35;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: #DDF7EF;
+    color: #087F70;
+  }
+}
+
+/* Custom scrollbars for Aqua Green + Light Blue */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5FAFA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBEAE7;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #16B89A;
+}

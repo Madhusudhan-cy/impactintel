@@ -1,0 +1,265 @@
+# INCREMENT 2 — CONTINUE EXISTING IMPLEMENTATION
+
+We have completed Increment 1 of the AI-Powered Repository Impact Intelligence System.
+
+Now continue development from the exact codebase, folder structure, modules, dependencies, and implementation created in Increment 1.
+
+**Do not create a new project. Do not repeat the project overview. Do not redesign the architecture. Do not regenerate working Increment 1 code.**
+
+## Step 1: Inspect the existing project
+
+Before making changes:
+
+1. Inspect the existing folder structure.
+2. Read the existing source files.
+3. Understand the extractor implementation.
+4. Understand the normalized graph schema.
+5. Understand the NetworkX graph construction.
+6. Understand the reverse dependency traversal implementation.
+7. Inspect the existing pytest tests.
+8. Run the existing tests and verify that Increment 1 still works.
+
+Identify the actual implementation status. Do not assume a feature works without checking it.
+
+Preserve all working code.
+
+## Step 2: Begin Increment 2
+
+The objective is to integrate our existing graph engine with GitHub and implement repository indexing and Pull Request impact analysis.
+
+Implement these features in order:
+
+### 2.1 PostgreSQL integration
+
+- Set up PostgreSQL connectivity.
+- Use SQLAlchemy for database interaction, after explaining the dependency.
+- Create database models and migrations.
+- Store repository metadata.
+- Store indexed branch and commit SHA.
+- Store graph nodes and edges.
+- Store indexing status.
+- Store PR analysis results.
+- Store impact evidence and dependency paths.
+
+Reuse the existing graph schema. Do not create an incompatible second schema.
+
+### 2.2 GitHub App integration
+
+- Implement GitHub App authentication.
+- Handle installation authorization.
+- Retrieve installation-accessible repositories.
+- Allow repository selection through backend APIs.
+- Retrieve repository metadata.
+- Securely manage GitHub App credentials and installation tokens.
+- Use least-privilege permissions.
+
+Do not introduce a separate organization administrator role. GitHub controls repository permissions.
+
+### 2.3 Repository indexing
+
+When a user selects a repository:
+
+1. Retrieve its source code.
+2. Identify the base/default branch.
+3. Record the branch commit SHA.
+4. Run the existing Increment 1 extractor.
+5. Build the graph using the existing NetworkX graph builder.
+6. Persist the graph in PostgreSQL.
+7. Record indexing status.
+
+Reuse the existing extractor and graph engine.
+
+Do not reimplement them.
+
+Initially support JavaScript and TypeScript. Integrate Python extraction if it is already available; otherwise leave it for the next increment and record unsupported files clearly.
+
+### 2.4 GitHub webhook integration
+
+Implement FastAPI webhook endpoints.
+
+Handle relevant events:
+
+- `installation`
+- `pull_request`
+- `push`
+
+Requirements:
+
+- Verify webhook signatures using the configured secret.
+- Reject invalid signatures.
+- Handle relevant PR actions, especially opened and synchronized.
+- Avoid duplicate processing of webhook deliveries.
+- Store useful delivery and processing status.
+- Handle webhook failures safely.
+
+Do not trust webhook payloads without validation.
+
+### 2.5 Pull Request diff retrieval
+
+When a relevant PR event arrives:
+
+1. Identify the repository.
+2. Identify the PR number.
+3. Retrieve PR metadata.
+4. Retrieve changed files and their status.
+5. Retrieve the PR diff or patch where available.
+6. Identify added, modified, renamed, and deleted files.
+7. Identify changed symbols where the current extractor supports this.
+
+For the initial version, file-level mapping is acceptable.
+
+Do not pretend that changed functions have been identified if the extractor only supports file-level dependencies.
+
+Handle renamed and deleted files explicitly.
+
+### 2.6 Map changes to the existing graph
+
+Use the stored graph associated with the PR's base branch.
+
+Map changed files to existing graph nodes.
+
+Important:
+
+- Dependency edges are stored as `Dependent → Dependency`.
+- Use reverse traversal to identify potentially affected dependents.
+- Preserve the maximum three-level dependency traversal limit.
+- Do not include the changed file itself as an affected component.
+- Support multiple changed files.
+- Preserve dependency paths and evidence.
+- Do not include unrelated files.
+
+If a changed file does not exist in the stored graph, report it as an unmapped change instead of inventing graph relationships.
+
+### 2.7 Generate the impact report
+
+Generate a structured report containing:
+
+- Repository information.
+- PR number and title.
+- Base branch and base commit SHA used for analysis.
+- Changed files.
+- Change types.
+- Mapped and unmapped files.
+- Directly affected components.
+- Indirectly affected components.
+- Dependency depth.
+- Dependency paths.
+- Supporting source evidence.
+- Related tests, where available.
+- Analysis status and limitations.
+
+Important:
+
+Do not claim suggested tests have passed or run unless they were actually executed.
+
+Do not claim complete runtime impact coverage.
+
+The report should distinguish graph-derived findings from unavailable or uncertain information.
+
+### 2.8 Manual PR analysis
+
+Implement a backend endpoint that allows manual PR analysis.
+
+This is needed for testing and as a fallback if webhook processing fails.
+
+It must reuse the same PR analysis service as webhook-triggered analysis.
+
+Do not duplicate the impact-analysis logic.
+
+### 2.9 Analysis history
+
+Persist PR analyses.
+
+Provide backend endpoints to:
+
+- List analyses for a repository.
+- Retrieve a specific PR analysis.
+- Retrieve its evidence and affected components.
+- Check indexing and analysis status.
+
+### 2.10 Optional GitHub PR comments
+
+Implement this only after the core PR analysis workflow works.
+
+If implemented:
+
+- Post a concise impact report as a PR comment.
+- Use appropriate GitHub App permissions.
+- Avoid duplicate comments when a PR is updated.
+- Keep dashboard reporting independent of comment posting.
+
+## Step 3: Development rules
+
+- Work inside the existing Increment 1 codebase.
+- Preserve the current folder structure unless a change is justified.
+- Explain any necessary structural changes.
+- Reuse existing modules.
+- Keep GitHub API operations separate from graph analysis.
+- Keep database models separate from business logic.
+- Keep webhook handling separate from PR analysis logic.
+- Use FastAPI for backend APIs.
+- Use PostgreSQL for persistence.
+- Use NetworkX for graph construction and traversal.
+- Do not implement Graph RAG, BM25, vector search, LangGraph, or LLM integration yet.
+- Do not build the React frontend yet.
+- Do not introduce unapproved technologies.
+- Never claim tests passed without actually running them.
+
+## Step 4: Implementation approach
+
+Implement one module at a time.
+
+For each module:
+
+1. Explain its purpose.
+2. Identify existing files that need modification.
+3. Identify new files that need creation.
+4. Show the exact code changes.
+5. Explain important implementation details.
+6. Provide Linux commands to install dependencies and run it.
+7. Run or provide tests.
+8. Verify that previous Increment 1 functionality remains intact.
+
+Do not dump the entire Increment 2 implementation in one response.
+
+Do not proceed to the next module until the current module is implemented and validated.
+
+## Step 5: Definition of done
+
+Increment 2 is complete when:
+
+- PostgreSQL persistence works.
+- GitHub App connection works.
+- Accessible repositories can be listed.
+- A user can select a repository.
+- Repository indexing works using the existing extractor.
+- The graph is persisted and can be reconstructed or loaded.
+- The indexed base branch and commit SHA are recorded.
+- Webhook signatures are verified.
+- Relevant PR events are processed.
+- PR diffs and changed files are retrieved.
+- Changed files are mapped to the stored graph.
+- Reverse dependency impact analysis works.
+- Structured impact reports are generated.
+- Evidence and analysis history are persisted.
+- Manual PR analysis works.
+- Existing Increment 1 tests still pass.
+
+Optional PR commenting can be completed after these core requirements.
+
+## YOUR FIRST ACTION
+
+Start by inspecting my existing Increment 1 project.
+
+Do not give me another project overview or generic roadmap.
+
+Tell me:
+
+1. What files and modules currently exist.
+2. What is already implemented and working.
+3. Whether Increment 1 tests pass.
+4. What changes are needed to integrate PostgreSQL.
+
+Then begin with the first actual implementation task for Increment 2.
+
+**Continue from my existing codebase, not from scratch.**

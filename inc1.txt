@@ -1,0 +1,699 @@
+# IMPLEMENTATION PROMPT — INCREMENT 1
+# AI-Powered Repository Impact Intelligence System
+## Building the Core Code Knowledge Graph and Dependency-Based Impact Analysis Engine
+
+I am developing a B.Tech Computer Science Engineering college project titled:
+
+**AI-Powered Repository Impact Intelligence System**
+
+Your task is to act as my senior software architect, Python developer, and technical mentor. Help me implement the first development increment of this project from scratch.
+
+IMPORTANT: Assume you have absolutely no previous knowledge of this project. Everything you need to understand is explained below.
+
+Do not skip the project context. Understand the architecture and constraints before writing code.
+
+---
+
+# PART 1: COMPLETE PROJECT BACKGROUND
+
+## 1. What are we building?
+
+We are building an AI-powered platform that connects to GitHub repositories and helps developers understand the potential impact of code changes.
+
+Consider this example:
+
+A developer modifies a function called:
+
+`process_payment()`
+
+This function is used by several other functions and components throughout the repository.
+
+A developer may not know every place that depends on it.
+
+If the modified function introduces a problem, other parts of the application could also be affected.
+
+Our system aims to identify these potentially affected components automatically.
+
+The system will:
+
+1. Analyze source code.
+2. Extract code relationships.
+3. Build a Code Knowledge Graph.
+4. Analyze Pull Request changes.
+5. Identify potentially affected components through dependency analysis.
+6. Find related tests.
+7. Generate evidence-based impact reports using AI.
+8. Provide a conversational interface for asking questions about the repository.
+
+## 2. Main capabilities of the complete project
+
+The final application will have two major capabilities.
+
+### Capability A: Pull Request Impact Analysis
+
+When a developer creates or updates a GitHub Pull Request:
+
+- Retrieve the PR diff.
+- Identify changed files and symbols.
+- Map changes to the repository's Code Knowledge Graph.
+- Find dependent components using reverse graph traversal.
+- Identify potentially affected components.
+- Identify related tests.
+- Collect supporting evidence.
+- Generate an impact report.
+- Display the report in the dashboard.
+- Optionally post the report as a GitHub PR comment.
+
+### Capability B: Conversational Repository Q&A
+
+Developers and reviewers can ask questions about the repository, such as:
+
+- What does `process_payment()` do?
+- Which functions call it?
+- What components depend on PaymentService?
+- Explain the checkout architecture.
+- Why is Checkout.tsx potentially affected?
+- Which tests should I inspect?
+- What could PR #142 affect?
+
+This will eventually use:
+
+- Graph RAG
+- BM25 keyword retrieval
+- Vector search
+- Hybrid retrieval
+- LangGraph
+- A locally hosted or company-controlled LLM
+- Evidence verification
+
+However, these AI capabilities are NOT part of Increment 1.
+
+---
+
+# PART 2: OVERALL ARCHITECTURE AND IMPORTANT DECISIONS
+
+Before implementation, understand these architectural decisions.
+
+## 3. Code Knowledge Graph
+
+The Code Knowledge Graph represents the structural relationships inside a software repository.
+
+### Node types
+
+Initially, our graph schema should support these conceptual node types:
+
+- File
+- Function
+- Class
+- Component
+- API Route
+- Test
+
+Not every node type needs a complete extractor in Increment 1.
+
+### Relationship types
+
+The planned relationship types are:
+
+- `imports`
+- `defines`
+- `calls`
+- `renders`
+- `exposes`
+- `handled_by`
+- `fetches`
+- `tests`
+
+The first increment should focus primarily on:
+
+- File nodes.
+- Import relationships between files.
+
+Design the schema so that other node and relationship types can be added later without redesigning the entire system.
+
+## 4. Critical graph direction rule
+
+This is one of the most important architectural decisions.
+
+Represent dependency relationships as:
+
+**Caller / Dependent → Dependency**
+
+For example:
+
+`Checkout.js → PaymentService.js`
+
+`PaymentService.js → Database.js`
+
+This means:
+
+- Checkout depends on PaymentService.
+- PaymentService depends on Database.
+
+If Database changes, we need to identify its dependents.
+
+Therefore, we must traverse the graph backwards.
+
+Example:
+
+<escape>
+Checkout.js → PaymentService.js → Database.js
+</escape>
+
+If `Database.js` changes, reverse traversal should identify:
+
+- Directly affected: PaymentService.js
+- Indirectly affected: Checkout.js
+
+This is called reverse dependency traversal.
+
+Do not reverse the graph's stored edge direction. Keep the original dependency direction and traverse incoming edges when calculating impact.
+
+## 5. Technology stack
+
+The agreed technology stack for the complete application is:
+
+### Backend
+
+- Python
+- FastAPI
+
+### Code analysis
+
+- Tree-sitter for JavaScript and TypeScript.
+- Python AST and/or Tree-sitter for Python.
+
+### Graph processing
+
+- NetworkX
+
+### Database
+
+- PostgreSQL
+- pgvector
+
+### Retrieval and AI (future increments)
+
+- Graph RAG
+- BM25
+- Vector search
+- LangGraph
+- LangChain where useful
+- Locally hosted/company-controlled LLM
+
+### Frontend (future increments)
+
+- React
+- Vite
+- React Router
+- TanStack Query
+- Tailwind CSS
+- React Flow
+
+Do not introduce additional technologies without explaining why they are necessary and asking for approval.
+
+---
+
+# PART 3: SCOPE OF INCREMENT 1
+
+## 6. Increment 1 objective
+
+**Build a working Code Knowledge Graph that extracts file-level dependencies from a JavaScript/TypeScript repository and identifies potentially affected files through reverse dependency traversal.**
+
+This is the foundation of the entire project.
+
+Before implementing GitHub integration, AI, RAG, or the dashboard, we must prove that the graph-based impact engine works correctly.
+
+## 7. What we will implement
+
+Increment 1 consists of the following modules:
+
+### Module 1: Test Repository
+
+Create a small sample JavaScript/TypeScript project.
+
+It should contain files with clear dependency relationships.
+
+For example:
+
+<escape>
+sample-repository/
+│
+├── src/
+│   ├── app.js
+│   ├── routes/
+│   │   └── paymentRoutes.js
+│   ├── services/
+│   │   └── paymentService.js
+│   ├── database/
+│   │   └── database.js
+│   └── utils/
+│       └── logger.js
+│
+└── tests/
+    └── payment.test.js
+</escape>
+
+The repository should be small but sufficiently complex to test:
+
+- Direct dependencies.
+- Indirect dependencies.
+- Multiple dependents.
+- Files with no dependencies.
+- Circular dependencies if useful for testing.
+- Unrelated files that should not appear in impact results.
+
+You may improve this structure if necessary, but keep the initial test repository manageable.
+
+### Module 2: JavaScript/TypeScript Extractor
+
+Build an extractor that scans the sample repository and identifies file-level imports.
+
+Examples:
+
+```javascript
+import { processPayment } from './paymentService.js';
+import database from '../database/database.js';
+```
+
+It should identify:
+
+- The importing file.
+- The imported file.
+- The relationship type.
+- The source location where available.
+- Whether the imported file could be resolved.
+
+Use Tree-sitter as the planned parser technology.
+
+Do not rely entirely on regular expressions for parsing source code.
+
+Handle relative imports correctly, including:
+
+- `./module`
+- `../module`
+- File extensions.
+- Supported index-file conventions where practical.
+
+For the initial implementation, focus on relative imports within the repository.
+
+External packages such as `express` or `axios` should not become internal repository file nodes.
+
+If an import cannot be resolved, record it as unresolved rather than silently inventing a target.
+
+### Module 3: Common Graph Schema
+
+The extractor should produce a normalized representation that is independent of the programming language.
+
+A conceptual file node:
+
+```python
+{
+    "id": "src/services/paymentService.js",
+    "type": "File",
+    "path": "src/services/paymentService.js",
+    "language": "javascript"
+}
+```
+
+A conceptual dependency edge:
+
+```python
+{
+    "source": "src/routes/paymentRoutes.js",
+    "target": "src/services/paymentService.js",
+    "type": "imports",
+    "file": "src/routes/paymentRoutes.js",
+    "line": 1,
+    "confidence": 1.0,
+    "extractor": "tree_sitter"
+}
+```
+
+The exact schema can be improved, but preserve the important information.
+
+The graph must be designed so that future extractors can add function calls, classes, React components, API routes, and tests.
+
+### Module 4: Graph Construction
+
+Use NetworkX to build the Code Knowledge Graph.
+
+Requirements:
+
+- Create nodes for repository files.
+- Create directed edges for dependency relationships.
+- Preserve edge metadata.
+- Avoid duplicate relationships.
+- Preserve the original dependency direction.
+
+Use a directed graph or an appropriate directed multigraph based on the schema requirements.
+
+Explain the choice.
+
+### Module 5: Reverse Dependency Impact Analysis
+
+Implement an impact-analysis function.
+
+Conceptual function:
+
+```python
+def find_affected_components(
+    graph,
+    changed_files,
+    max_depth=3
+):
+    ...
+```
+
+Input:
+
+- Graph.
+- One or more changed files.
+- Maximum dependency traversal depth.
+
+Output:
+
+- Changed files.
+- Directly affected files.
+- Indirectly affected files.
+- Dependency depth.
+- Dependency path or paths.
+- Supporting edge evidence.
+
+Rules:
+
+1. Start from the changed file.
+2. Find files that directly depend on it.
+3. Continue traversing incoming dependency relationships.
+4. Stop after three dependency levels.
+5. Do not include the changed file itself in the affected-components list.
+6. Do not include unrelated files.
+7. Return the closest affected files first.
+8. Support multiple changed files.
+9. Handle cycles without infinite loops.
+10. Preserve the dependency path explaining why each file is considered affected.
+
+Example:
+
+Stored graph:
+
+```text
+app.js → paymentRoutes.js
+paymentRoutes.js → paymentService.js
+paymentService.js → database.js
+paymentService.js → logger.js
+```
+
+If `database.js` changes, expected results:
+
+```text
+Changed:
+database.js
+
+Directly affected:
+paymentService.js
+
+Indirectly affected:
+paymentRoutes.js
+app.js
+```
+
+`logger.js` must not be marked affected by this change because it is a dependency of paymentService.js, not a dependent of database.js.
+
+This distinction is important.
+
+### Module 6: Impact Depth Rules
+
+Use the following initial rule:
+
+- Maximum three dependency levels.
+- Changed file is depth 0.
+- Direct dependents are depth 1.
+- Their dependents are depth 2.
+- Continue up to depth 3.
+
+Tests will be handled as a special relationship type in a future increment. Do not let test relationships consume the three-level dependency traversal limit when that functionality is added.
+
+For Increment 1, focus on file import relationships.
+
+### Module 7: Testing and Validation
+
+Create automated tests.
+
+Use pytest.
+
+Test at least these scenarios:
+
+1. A file with one direct dependent.
+2. A file with multiple direct dependents.
+3. A file with indirect dependents.
+4. A changed file with no dependents.
+5. A dependency chain longer than three levels.
+6. Multiple changed files.
+7. Circular dependency relationships.
+8. An unrelated file that must not appear in the impact results.
+9. Correct dependency direction.
+10. Correct dependency path reporting.
+
+Tests must verify actual results, not just whether functions execute without errors.
+
+---
+
+# PART 4: EXPECTED PROJECT STRUCTURE
+
+Propose a clean, modular folder structure.
+
+A possible starting structure is:
+
+```text
+repository-impact-intelligence/
+│
+├── backend/
+│   ├── app/
+│   │   ├── core/
+│   │   ├── extractors/
+│   │   │   └── javascript/
+│   │   ├── graph/
+│   │   ├── impact/
+│   │   └── main.py
+│   │
+│   ├── tests/
+│   ├── requirements.txt
+│   └── README.md
+│
+├── sample-repository/
+│   ├── src/
+│   └── tests/
+│
+└── README.md
+```
+
+You can improve this structure, but explain why.
+
+Do not create empty folders for every future feature just to make the structure look complete.
+
+Keep Increment 1 focused.
+
+---
+
+# PART 5: IMPLEMENTATION REQUIREMENTS
+
+## 8. Development environment
+
+I use:
+
+- Linux (Kali Linux).
+- VS Code.
+- Python.
+- Terminal-based development.
+
+Give Linux-compatible commands.
+
+Assume I can work with Python and basic Linux commands, but explain unfamiliar tools and concepts.
+
+## 9. How you must guide implementation
+
+Do not dump the entire project code in one response.
+
+Follow this implementation sequence:
+
+### Step 1: Architecture and setup
+
+- Explain the scope of Increment 1.
+- Propose the final Increment 1 folder structure.
+- Explain each module.
+- Identify required Python packages.
+- Explain how Tree-sitter and NetworkX will be used.
+- Give environment setup commands.
+
+### Step 2: Create the sample repository
+
+- Create sample files.
+- Explain each file's purpose.
+- Show the intended dependency relationships.
+- Define expected impact-analysis results.
+
+### Step 3: Implement the extractor
+
+- Explain how Tree-sitter parses JavaScript imports.
+- Implement import extraction.
+- Resolve internal relative imports.
+- Test extraction results.
+
+### Step 4: Implement the graph schema
+
+- Define normalized nodes and edges.
+- Explain how the schema supports future languages.
+- Implement the schema.
+
+### Step 5: Implement NetworkX graph construction
+
+- Add file nodes.
+- Add dependency edges.
+- Preserve metadata.
+- Display graph contents for validation.
+
+### Step 6: Implement reverse dependency traversal
+
+- Explain the traversal algorithm.
+- Implement the impact-analysis function.
+- Support the three-level depth limit.
+- Return dependency paths and evidence.
+- Handle cycles and multiple changed files.
+
+### Step 7: Automated testing
+
+- Write pytest test cases.
+- Run all tests.
+- Fix errors.
+- Show expected and actual results.
+
+### Step 8: End-to-end validation
+
+Run the extractor against the complete sample repository.
+
+Build the graph.
+
+Select a changed file.
+
+Run impact analysis.
+
+Show the resulting affected files and dependency paths.
+
+Explain why each file was identified.
+
+---
+
+# PART 6: ARCHITECTURAL CONSTRAINTS
+
+Follow these rules throughout implementation.
+
+1. Graph-based dependency analysis must determine structural impact.
+2. The LLM must not determine the graph's dependency relationships.
+3. Store dependency edges as Caller/Dependent → Dependency.
+4. Use reverse traversal to find affected dependents.
+5. Maximum initial traversal depth is three.
+6. The changed node itself must not be returned as an affected component.
+7. Avoid false impact results from incorrect edge direction.
+8. Handle cycles safely.
+9. Preserve evidence metadata for extracted relationships.
+10. Do not silently resolve an unknown import to an incorrect file.
+11. External libraries must not be treated as internal source files.
+12. Keep the schema extensible for future languages.
+13. Do not implement GitHub integration yet.
+14. Do not implement PostgreSQL yet unless there is a compelling Increment 1 requirement.
+15. Do not implement embeddings, pgvector, BM25, RAG, LangGraph, or LLM integration yet.
+16. Do not build the React dashboard yet.
+17. Do not introduce unapproved infrastructure or technologies.
+18. Do not claim runtime impact completeness.
+
+---
+
+# PART 7: DEFINITION OF DONE
+
+Increment 1 is considered complete only when all the following conditions are satisfied:
+
+- [ ] A sample JavaScript/TypeScript repository exists.
+- [ ] The extractor identifies internal file imports.
+- [ ] Relative imports are resolved correctly for supported cases.
+- [ ] Unresolved imports are recorded.
+- [ ] External dependencies are excluded from internal graph edges.
+- [ ] A normalized graph schema exists.
+- [ ] NetworkX builds the directed dependency graph.
+- [ ] Dependency metadata is preserved.
+- [ ] Reverse dependency traversal works.
+- [ ] Three-level traversal limit works correctly.
+- [ ] Multiple changed files are supported.
+- [ ] Cycles do not cause infinite loops.
+- [ ] Dependency paths are returned.
+- [ ] pytest tests validate the expected results.
+- [ ] An end-to-end demonstration works.
+
+The final demonstration should look similar to:
+
+```text
+Changed File:
+src/database/database.js
+
+Potentially Affected Components:
+
+1. src/services/paymentService.js
+   Impact Level: Direct (Depth 1)
+   Reason: Imports database.js
+
+2. src/routes/paymentRoutes.js
+   Impact Level: Indirect (Depth 2)
+   Reason: Depends on paymentService.js
+
+3. src/app.js
+   Impact Level: Indirect (Depth 3)
+   Reason: Depends on paymentRoutes.js
+```
+
+The exact output format can be improved, but it must preserve this information.
+
+---
+
+# PART 8: IMPORTANT INSTRUCTIONS FOR YOU
+
+Act as a senior engineer guiding a student through an actual software engineering project.
+
+- Be technically precise.
+- Explain architectural decisions.
+- Use real, runnable code.
+- Never fabricate package APIs.
+- Never claim code has been tested unless it has actually been executed.
+- Provide expected output for commands.
+- Explain errors and their solutions.
+- Keep modules maintainable.
+- Avoid unnecessary complexity.
+- Do not jump to future increments.
+- Do not change the agreed architecture without discussing it first.
+
+If you identify a problem with the proposed architecture, explain the problem and suggest a solution before implementing a change.
+
+When a design decision is not finalized, ask me before locking it in.
+
+Do not ask me to repeat information already present in this prompt.
+
+---
+
+# YOUR FIRST RESPONSE
+
+Do not immediately generate all the code.
+
+Start by providing:
+
+1. Your understanding of the complete project in a concise explanation.
+2. The exact objectives and boundaries of Increment 1.
+3. The proposed folder structure.
+4. The required Python dependencies and why each is needed.
+5. The planned extraction → graph construction → reverse impact analysis workflow.
+6. The test repository's proposed dependency structure.
+7. The expected output of the first impact-analysis demonstration.
+
+Then begin Step 1: environment and project setup.
+
+**Our immediate goal is to prove that a source-code repository can be converted into a dependency graph and that changing one file allows us to correctly identify its potentially affected dependents.**
+
+Do not start implementing the complete AI application. Build this foundation correctly first.
