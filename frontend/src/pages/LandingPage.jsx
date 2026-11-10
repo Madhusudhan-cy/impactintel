@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import {
@@ -13,29 +13,41 @@ import {
   Cpu,
   Github,
   Sparkles,
+  AlertCircle,
+  Info,
 } from 'lucide-react';
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const redirectMessage = location.state?.message;
 
   const handleGitHubLogin = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await authApi.getAuthUrl();
       if (res && res.url) {
-        if (res.url.startsWith('/')) {
-          navigate(res.url);
-        } else {
+        if (res.url.startsWith('http')) {
           window.location.href = res.url;
+        } else {
+          navigate(res.url);
         }
       } else {
-        navigate('/repositories');
+        throw new Error('No authorization URL returned from server.');
       }
     } catch (err) {
-      console.warn('Using local dev bypass:', err);
-      navigate('/repositories');
+      console.error('GitHub authentication initiation failed:', err);
+      if (import.meta.env.VITE_ENABLE_DEV_BYPASS === 'true') {
+        console.warn('Using local dev bypass per VITE_ENABLE_DEV_BYPASS=true');
+        navigate('/repositories');
+      } else {
+        setError(err.message || 'Failed to initiate GitHub login. Please ensure the backend is running and configured.');
+      }
     } finally {
       setLoading(false);
     }
@@ -103,6 +115,20 @@ export default function LandingPage() {
           <strong className="text-[#172B35] font-semibold">Code Knowledge Graph</strong>.
           Computes transitive blast radii, recommends impacted tests, and answers conversational codebase questions with verified evidence.
         </p>
+
+        {redirectMessage && (
+          <div className="max-w-md mx-auto mb-5 p-3 rounded-xl bg-[#E2F4FC] border border-[#55BDEB]/40 text-[#258FC7] text-xs flex items-center justify-center gap-2 shadow-sm font-medium">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>{redirectMessage}</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="max-w-md mx-auto mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-center gap-2 shadow-sm font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-14">

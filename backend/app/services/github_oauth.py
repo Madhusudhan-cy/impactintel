@@ -11,7 +11,8 @@ from app.core.config import (
     JWT_SECRET_KEY,
     JWT_ALGORITHM,
     SESSION_EXPIRE_HOURS,
-    GITHUB_API_BASE_URL
+    GITHUB_API_BASE_URL,
+    ALLOW_DEV_BYPASS
 )
 
 logger = logging.getLogger(__name__)
@@ -32,8 +33,10 @@ class GitHubOAuthService:
     def get_authorization_url(state: str) -> str:
         """Generate GitHub OAuth authorization URL."""
         if not GITHUB_CLIENT_ID:
-            # Dev fallback redirect
-            return f"/auth/callback?code=mock_dev_code&state={state}"
+            if ALLOW_DEV_BYPASS:
+                # Dev fallback redirect
+                return f"/auth/callback?code=mock_dev_code&state={state}"
+            raise ValueError("GITHUB_CLIENT_ID is not configured. Cannot generate authorization URL.")
 
         params = {
             "client_id": GITHUB_CLIENT_ID,
@@ -47,8 +50,10 @@ class GitHubOAuthService:
     @staticmethod
     def exchange_code_for_token(code: str) -> Optional[str]:
         """Exchange OAuth authorization code for GitHub access token."""
-        if code.startswith("mock_dev_code") or not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+        if ALLOW_DEV_BYPASS and (code.startswith("mock_dev_code") or not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET):
             return "mock_oauth_token_dev"
+        if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+            return None
 
         url = "https://github.com/login/oauth/access_token"
         headers = {"Accept": "application/json"}
@@ -72,7 +77,7 @@ class GitHubOAuthService:
     @staticmethod
     def get_user_profile(access_token: str) -> Dict[str, Any]:
         """Retrieve the authenticated GitHub user's profile."""
-        if access_token.startswith("mock_oauth_token"):
+        if ALLOW_DEV_BYPASS and access_token.startswith("mock_oauth_token"):
             return {
                 "id": 1001,
                 "login": "dev-user",
@@ -110,7 +115,7 @@ class GitHubOAuthService:
     @staticmethod
     def get_user_repositories(access_token: str) -> List[Dict[str, Any]]:
         """Retrieve repositories accessible through the user's OAuth authorization."""
-        if access_token.startswith("mock_oauth_token"):
+        if ALLOW_DEV_BYPASS and access_token.startswith("mock_oauth_token"):
             return [
                 {
                     "id": 1,

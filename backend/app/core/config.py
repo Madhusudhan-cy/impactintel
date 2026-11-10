@@ -32,8 +32,13 @@ DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID", "")
 GITHUB_PRIVATE_KEY = os.getenv("GITHUB_PRIVATE_KEY", "")
 GITHUB_PRIVATE_KEY_PATH = os.getenv("GITHUB_PRIVATE_KEY_PATH", "")
+GITHUB_APP_SLUG = os.getenv("GITHUB_APP_SLUG", "")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "dev_webhook_secret")
 GITHUB_API_BASE_URL = os.getenv("GITHUB_API_BASE_URL", "https://api.github.com")
+
+# Development Bypass Control
+# In production, this MUST remain False so no sample repos or dev auth substitutes are used
+ALLOW_DEV_BYPASS = os.getenv("ALLOW_DEV_BYPASS", "false").lower() in ("true", "1", "yes")
 
 # GitHub OAuth App Configuration (Increment 5)
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 
 import Layout from './components/common/Layout';
+import ProtectedRoute from './components/common/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import GitHubCallbackPage from './pages/GitHubCallbackPage';
 import RepositorySelectionPage from './pages/RepositorySelectionPage';
@@ -35,12 +36,33 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth/callback" element={<GitHubCallbackPage />} />
 
-            {/* Repositories Hub */}
-            <Route path="/repositories" element={<RepositorySelectionPage />} />
-            <Route path="/repositories/:repoId/indexing" element={<IndexingPage />} />
+            {/* Protected Repositories Hub */}
+            <Route
+              path="/repositories"
+              element={
+                <ProtectedRoute>
+                  <RepositorySelectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/repositories/:repoId/indexing"
+              element={
+                <ProtectedRoute>
+                  <IndexingPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Repository Main Dashboard & Navigation */}
-            <Route path="/repositories/:repoId" element={<Layout />}>
+            {/* Protected Repository Main Dashboard & Navigation */}
+            <Route
+              path="/repositories/:repoId"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Navigate to="overview" replace />} />
               <Route path="overview" element={<DashboardPage />} />
               <Route path="pull-requests" element={<PullRequestsPage />} />

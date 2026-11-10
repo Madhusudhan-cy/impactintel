@@ -3,12 +3,13 @@ import json
 import logging
 import secrets
 from pathlib import Path
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.config import GITHUB_WEBHOOK_SECRET, FRONTEND_URL
+from app.core.config import GITHUB_WEBHOOK_SECRET, FRONTEND_URL, ALLOW_DEV_BYPASS, GITHUB_APP_SLUG
 from app.core.security import verify_github_signature
 from app.db.session import get_db
 from app.db.models import Repository, CommitIndex, PullRequestAnalysisRecord, ImpactReportRecord, ConversationRecord
@@ -190,7 +191,7 @@ def trigger_index(
     full_name = f"{owner}/{repo}"
     indexer = RepositoryIndexer()
 
-    # 1. Explicit local directory path provided
+    # 1. Explicit local directory path provided (e.g. testing)
     if payload.directory_path:
         dir_path = Path(payload.directory_path)
         if not dir_path.exists():
@@ -202,8 +203,8 @@ def trigger_index(
             branch=payload.branch,
             commit_sha=payload.commit_sha
         )
-    # 2. Local fallback for sample-repository for local testing/demo
-    elif (full_name in ("org/shop-repo", "testorg/sample-repo")) and Path("sample-repository").exists():
+    # 2. Local fallback for sample-repository only when development bypass is explicitly enabled
+    elif ALLOW_DEV_BYPASS and (full_name in ("org/shop-repo", "testorg/sample-repo")) and Path("sample-repository").exists():
         commit_index = indexer.index_directory(
             db=db,
             full_name=full_name,
@@ -211,7 +212,7 @@ def trigger_index(
             branch=payload.branch,
             commit_sha=payload.commit_sha
         )
-    # 3. Secure remote repository ingestion
+    # 3. Secure remote repository ingestion through authorized GitHub App
     else:
         with retrieve_remote_repository(
             owner=owner,
@@ -520,19 +521,21 @@ def get_current_user_profile(authorization: Optional[str] = Header(None)):
     """Retrieve current authenticated user profile."""
     user = get_current_user_optional(authorization)
     if not user:
-        # Provide default local developer profile if running in dev mode
-        return {
-            "authenticated": True,
-            "user": {
-                "id": 1001,
-                "login": "dev-user",
-                "name": "Local Developer",
-                "email": "dev@localhost",
-                "avatar_url": "https://avatars.githubusercontent.com/u/583231",
-                "html_url": "https://github.com",
-                "bio": "Local developer testing AI Repository Impact Intelligence"
+        if ALLOW_DEV_BYPASS:
+            # Provide default local developer profile only in dev mode
+            return {
+                "authenticated": True,
+                "user": {
+                    "id": 1001,
+                    "login": "dev-user",
+                    "name": "Local Developer",
+                    "email": "dev@localhost",
+                    "avatar_url": "https://avatars.githubusercontent.com/u/583231",
+                    "html_url": "https://github.com",
+                    "bio": "Local developer testing AI Repository Impact Intelligence"
+                }
             }
-        }
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return {"authenticated": True, "user": user}
 
 
@@ -546,56 +549,168 @@ def logout():
 # 11. Repository Listing & Management Endpoints
 # ============================================================================
 
+@api_router.get("/repos/installation/status")
+def get_installation_status(authorization: Optional[str] = Header(None)):
+    """Check GitHub App installation status for the authenticated user."""
+    user = get_current_user_optional(authorization)
+    if not user:
+        if ALLOW_DEV_BYPASS:
+            return {
+                "has_installations": True,
+                "installation_count": 1,
+                "install_url": f"https://github.com/apps/{GITHUB_APP_SLUG or 'impactintel'}/installations/new",
+                "installations": [{"id": 1, "account": "dev-user"}]
+            }
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    gh = GitHubAppService()
+    install_url = gh.get_install_url()
+
+    access_token = None
+    if authorization and authorization.startswith("Bearer "):
+        decoded = GitHubOAuthService.decode_session_jwt(authorization.split("Bearer ", 1)[1])
+        if decoded:
+            access_token = decoded.get("access_token")
+
+    installations = []
+    if access_token and not access_token.startswith("mock_"):
+        try:
+            installations = gh.get_user_installations(access_token)
+        except Exception as e:
+            logger.warning(f"Could not fetch user installations: {e}")
+
+    has_installations = len(installations) > 0
+    return {
+        "has_installations": has_installations,
+        "installation_count": len(installations),
+        "install_url": install_url,
+        "installations": [
+            {"id": i.get("id"), "account": i.get("account", {}).get("login")}
+            for i in installations
+        ]
+    }
+
+
 @api_router.get("/repos")
 def list_repositories(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """List repositories registered in the platform and accessible to the user."""
-    # 1. Stored repositories in DB
-    db_repos = db.query(Repository).all()
+    user = get_current_user_optional(authorization)
+    if not user and not ALLOW_DEV_BYPASS:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    # Build DB-indexed repos map for enrichment
+    db_repos = {r.full_name: r for r in db.query(Repository).all()}
     results = []
-    seen_full_names = set()
 
-    for r in db_repos:
-        seen_full_names.add(r.full_name)
-        # Check indexing status
-        latest_idx = (
-            db.query(CommitIndex)
-            .filter(CommitIndex.repository_id == r.id)
-            .order_by(CommitIndex.indexed_at.desc())
-            .first()
-        )
-        results.append({
-            "id": r.id,
-            "name": r.name,
-            "full_name": r.full_name,
-            "owner": r.owner,
-            "default_branch": r.default_branch,
-            "private": False,
-            "languages": ["JavaScript", "Python"],
-            "indexing_status": latest_idx.status if latest_idx else "NOT_INDEXED",
-            "indexed_at": latest_idx.indexed_at.isoformat() if latest_idx else None,
-            "total_nodes": latest_idx.total_nodes if latest_idx else 0,
-            "total_edges": latest_idx.total_edges if latest_idx else 0
-        })
+    def _enrich_with_db(full_name: str, base: dict) -> dict:
+        """Merge GitHub App repo data with DB indexing status."""
+        r = db_repos.get(full_name)
+        if r:
+            latest_idx = (
+                db.query(CommitIndex)
+                .filter(CommitIndex.repository_id == r.id)
+                .order_by(CommitIndex.indexed_at.desc())
+                .first()
+            )
+            base.update({
+                "id": r.id,
+                "default_branch": r.default_branch,
+                "indexing_status": latest_idx.status if latest_idx else "NOT_INDEXED",
+                "indexed_at": latest_idx.indexed_at.isoformat() if latest_idx else None,
+                "total_nodes": latest_idx.total_nodes if latest_idx else 0,
+                "total_edges": latest_idx.total_edges if latest_idx else 0,
+            })
+        else:
+            base.setdefault("indexing_status", "NOT_INDEXED")
+            base.setdefault("indexed_at", None)
+            base.setdefault("total_nodes", 0)
+            base.setdefault("total_edges", 0)
+        return base
 
-    # 2. Add local sample-repository if not registered yet
-    sample_path = Path("sample-repository")
-    if sample_path.exists() and "org/shop-repo" not in seen_full_names:
-        results.insert(0, {
-            "id": 1,
-            "name": "shop-repo",
-            "full_name": "org/shop-repo",
-            "owner": "org",
-            "default_branch": "main",
-            "private": False,
-            "languages": ["JavaScript", "Python"],
-            "indexing_status": "NOT_INDEXED",
-            "indexed_at": None,
-            "total_nodes": 0,
-            "total_edges": 0
-        })
+    # Fetch from GitHub App installations when real auth is present
+    access_token = None
+    if authorization and authorization.startswith("Bearer "):
+        decoded = GitHubOAuthService.decode_session_jwt(authorization.split("Bearer ", 1)[1])
+        if decoded:
+            access_token = decoded.get("access_token")
+
+    if access_token and not access_token.startswith("mock_"):
+        gh = GitHubAppService()
+        try:
+            installations = gh.get_user_installations(access_token)
+            seen_full_names = set()
+            for inst in installations:
+                inst_id = inst.get("id")
+                if not inst_id:
+                    continue
+                try:
+                    repos = gh.list_accessible_repositories(inst_id)
+                    for repo in repos:
+                        fn = repo.get("full_name", "")
+                        if fn and fn not in seen_full_names:
+                            seen_full_names.add(fn)
+                            results.append(_enrich_with_db(fn, {
+                                "id": repo.get("id"),
+                                "name": repo.get("name"),
+                                "full_name": fn,
+                                "owner": repo.get("owner", {}).get("login"),
+                                "description": repo.get("description") or "",
+                                "default_branch": repo.get("default_branch", "main"),
+                                "private": repo.get("private", False),
+                                "language": repo.get("language") or "Other",
+                                "languages": [repo.get("language")] if repo.get("language") else [],
+                            }))
+                except Exception as e:
+                    logger.warning(f"Failed to list repos for installation {inst_id}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to fetch user installations: {e}")
+
+    # Also surface any DB-registered repos the user may have added manually
+    for full_name, r in db_repos.items():
+        if not any(res["full_name"] == full_name for res in results):
+            latest_idx = (
+                db.query(CommitIndex)
+                .filter(CommitIndex.repository_id == r.id)
+                .order_by(CommitIndex.indexed_at.desc())
+                .first()
+            )
+            results.append({
+                "id": r.id,
+                "name": r.name,
+                "full_name": full_name,
+                "owner": r.owner,
+                "description": "",
+                "default_branch": r.default_branch,
+                "private": False,
+                "language": "Other",
+                "languages": [],
+                "indexing_status": latest_idx.status if latest_idx else "NOT_INDEXED",
+                "indexed_at": latest_idx.indexed_at.isoformat() if latest_idx else None,
+                "total_nodes": latest_idx.total_nodes if latest_idx else 0,
+                "total_edges": latest_idx.total_edges if latest_idx else 0,
+            })
+
+    # Dev-mode: inject sample-repository if present and not already in results
+    if ALLOW_DEV_BYPASS and Path("sample-repository").exists():
+        if not any(r["full_name"] == "org/shop-repo" for r in results):
+            results.insert(0, {
+                "id": 1,
+                "name": "shop-repo",
+                "full_name": "org/shop-repo",
+                "owner": "org",
+                "description": "Multi-tier sample e-commerce application (React + Express/FastAPI)",
+                "default_branch": "main",
+                "private": False,
+                "language": "JavaScript",
+                "languages": ["JavaScript", "Python"],
+                "indexing_status": "NOT_INDEXED",
+                "indexed_at": None,
+                "total_nodes": 0,
+                "total_edges": 0,
+            })
 
     return results
 
@@ -610,8 +725,8 @@ def get_repository_details(
     full_name = f"{owner}/{repo}"
     repository = db.query(Repository).filter(Repository.full_name == full_name).first()
     if not repository:
-        # Fallback info for sample repository
-        if full_name == "org/shop-repo" or Path("sample-repository").exists():
+        # Dev-mode: return stub for sample repository
+        if ALLOW_DEV_BYPASS and (full_name == "org/shop-repo" or Path("sample-repository").exists()):
             return {
                 "id": 1,
                 "name": repo,

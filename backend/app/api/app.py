@@ -72,6 +72,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Register router under /api prefix
     app.include_router(api_router, prefix="/api")
     return app
 

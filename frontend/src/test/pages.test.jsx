@@ -30,6 +30,12 @@ vi.mock('../api/repositories', () => ({
     remove: vi.fn(),
     triggerIndex: vi.fn(),
     getIndexStatus: vi.fn(),
+    getInstallationStatus: vi.fn().mockResolvedValue({
+      has_installations: true,
+      installation_count: 1,
+      install_url: 'https://github.com/apps/impactintel/installations/new',
+      installations: [{ id: 1, account: 'org' }],
+    }),
   },
 }));
 

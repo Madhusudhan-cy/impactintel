@@ -1,4 +1,23 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+export function resolveApiUrl(endpoint) {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+
+  // Read configured base URL and strip trailing slashes
+  let base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').trim().replace(/\/+$/, '');
+
+  // Normalize endpoint to start with a slash
+  const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // Ensure /api prefix is consistently applied without duplication
+  if (!base.endsWith('/api') && !cleanPath.startsWith('/api/') && cleanPath !== '/api') {
+    base = `${base}/api`;
+  } else if (base.endsWith('/api') && cleanPath.startsWith('/api/')) {
+    base = base.slice(0, -4);
+  }
+
+  return `${base}${cleanPath}`;
+}
 
 export async function apiClient(endpoint, options = {}) {
   const token = localStorage.getItem('auth_token');
@@ -8,7 +27,7 @@ export async function apiClient(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const url = resolveApiUrl(endpoint);
 
   const response = await fetch(url, {
     ...options,

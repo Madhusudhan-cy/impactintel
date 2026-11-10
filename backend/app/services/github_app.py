@@ -105,7 +105,9 @@ class GitHubAppService:
                 "owner": r["owner"]["login"],
                 "default_branch": r.get("default_branch", "main"),
                 "private": r.get("private", False),
-                "html_url": r.get("html_url", "")
+                "html_url": r.get("html_url", ""),
+                "language": r.get("language") or "Other",
+                "description": r.get("description") or "",
             })
         return repos
 
@@ -192,3 +194,70 @@ class GitHubAppService:
                 data = resp.json()
                 return data.get("sha")
             return None
+
+    def get_app_slug(self) -> str:
+        """Retrieve GitHub App slug from configuration or GitHub API."""
+        from app.core.config import GITHUB_APP_SLUG
+        if GITHUB_APP_SLUG:
+            return GITHUB_APP_SLUG
+        if not self.app_id or not self.private_key:
+            return "impactintel"
+        try:
+            app_jwt = self.generate_jwt()
+            headers = {
+                "Authorization": f"Bearer {app_jwt}",
+                "Accept": "application/vnd.github+json"
+            }
+            url = f"{self.base_url}/app"
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(url, headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    slug = data.get("slug")
+                    if slug:
+                        return slug
+        except Exception:
+            pass
+        return "impactintel"
+
+    def get_install_url(self) -> str:
+        """Return the GitHub App installation URL."""
+        slug = self.get_app_slug()
+        return f"https://github.com/apps/{slug}/installations/new"
+
+    def list_all_installations(self) -> List[Dict[str, Any]]:
+        """List all installations of this GitHub App using app RS256 JWT."""
+        if not self.app_id or not self.private_key:
+            return []
+        try:
+            app_jwt = self.generate_jwt()
+            headers = {
+                "Authorization": f"Bearer {app_jwt}",
+                "Accept": "application/vnd.github+json"
+            }
+            url = f"{self.base_url}/app/installations"
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(url, headers=headers)
+                res.raise_for_status()
+                return res.json()
+        except Exception:
+            return []
+
+    def get_user_installations(self, user_access_token: str) -> List[Dict[str, Any]]:
+        """List installations accessible to the authenticated user using user OAuth token."""
+        if not user_access_token or user_access_token.startswith("mock_"):
+            return []
+        headers = {
+            "Authorization": f"Bearer {user_access_token}",
+            "Accept": "application/vnd.github+json"
+        }
+        url = f"{self.base_url}/user/installations"
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(url, headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    return data.get("installations", [])
+        except Exception:
+            pass
+        return []

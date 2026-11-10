@@ -21,17 +21,21 @@ export default function GitHubCallbackPage() {
 
     if (token) {
       loginWithToken(token);
-      navigate('/repositories');
+      navigate('/repositories', { replace: true });
       return;
     }
 
     if (code) {
-      loginWithToken('dev_mock_jwt_token_2026');
-      navigate('/repositories');
+      if (import.meta.env.VITE_ENABLE_DEV_BYPASS === 'true') {
+        loginWithToken('dev_mock_jwt_token_2026');
+        navigate('/repositories', { replace: true });
+        return;
+      }
+      setError('Direct authorization code received on frontend without token exchange. Please authenticate through backend flow.');
       return;
     }
 
-    navigate('/repositories');
+    setError('Authentication incomplete: no session token received from GitHub.');
   }, [searchParams, loginWithToken, navigate]);
 
   if (error) {
