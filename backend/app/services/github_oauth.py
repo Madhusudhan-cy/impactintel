@@ -1,5 +1,9 @@
+import hashlib
+import hmac as hmac_lib
+import secrets
 import time
 from typing import Dict, Any, Optional, List
+from urllib.parse import urlencode
 import jwt
 import httpx
 import logging
@@ -30,22 +34,40 @@ class GitHubOAuthService:
     """
 
     @staticmethod
+    def generate_oauth_state() -> str:
+        """Generate a self-validating HMAC-signed OAuth state token for CSRF protection."""
+        nonce = secrets.token_urlsafe(24)
+        mac = hmac_lib.new(JWT_SECRET_KEY.encode(), nonce.encode(), hashlib.sha256).hexdigest()[:16]
+        return f"{nonce}.{mac}"
+
+    @staticmethod
+    def validate_oauth_state(state: Optional[str]) -> bool:
+        """Validate OAuth state token HMAC signature."""
+        if not state or "." not in state:
+            return False
+        try:
+            nonce, received_mac = state.rsplit(".", 1)
+            expected_mac = hmac_lib.new(JWT_SECRET_KEY.encode(), nonce.encode(), hashlib.sha256).hexdigest()[:16]
+            return hmac_lib.compare_digest(expected_mac, received_mac)
+        except Exception:
+            return False
+
+    @staticmethod
     def get_authorization_url(state: str) -> str:
-        """Generate GitHub OAuth authorization URL."""
+        """Generate GitHub OAuth authorization URL with properly URL-encoded parameters."""
         if not GITHUB_CLIENT_ID:
             if ALLOW_DEV_BYPASS:
                 # Dev fallback redirect
-                return f"/auth/callback?code=mock_dev_code&state={state}"
+                return f"/auth/callback?{urlencode({'code': 'mock_dev_code', 'state': state})}"
             raise ValueError("GITHUB_CLIENT_ID is not configured. Cannot generate authorization URL.")
 
         params = {
             "client_id": GITHUB_CLIENT_ID,
             "redirect_uri": GITHUB_OAUTH_REDIRECT_URI,
             "scope": "read:user repo",
-            "state": state
+            "state": state,
         }
-        query_str = "&".join(f"{k}={v}" for k, v in params.items())
-        return f"https://github.com/login/oauth/authorize?{query_str}"
+        return f"https://github.com/login/oauth/authorize?{urlencode(params)}"
 
     @staticmethod
     def exchange_code_for_token(code: str) -> Optional[str]:

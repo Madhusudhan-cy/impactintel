@@ -488,20 +488,35 @@ def get_current_user_optional(authorization: Optional[str] = Header(None)) -> Op
 @api_router.get("/auth/github/url")
 def get_github_auth_url():
     """Generate GitHub OAuth authorization URL with CSRF protection."""
-    state = secrets.token_urlsafe(16)
+    state = GitHubOAuthService.generate_oauth_state()
     url = GitHubOAuthService.get_authorization_url(state=state)
     return {"url": url, "state": state}
 
 
 @api_router.get("/auth/github/callback")
 def github_auth_callback(
-    code: str,
-    state: Optional[str] = None
+    request: Request,
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
 ):
     """
     Handle GitHub OAuth callback, exchange code for access token,
     fetch user profile, and issue signed JWT session.
     """
+    # Handle GitHub-reported errors (e.g. user denied access)
+    if error:
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error={error}")
+
+    if not code:
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=missing_code")
+
+    # Validate state HMAC signature (skip in dev bypass mode)
+    if not ALLOW_DEV_BYPASS:
+        if not GitHubOAuthService.validate_oauth_state(state):
+            logger.warning("OAuth callback received invalid state parameter")
+            return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=invalid_state")
+
     access_token = GitHubOAuthService.exchange_code_for_token(code)
     if not access_token:
         return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=access_denied")

@@ -1,0 +1,210 @@
+# Task: Diagnose and Fix GitHub OAuth Redirect and Repository Access in Production
+
+You are working on my existing project:
+
+**AI-Powered Repository Impact Intelligence System (ImpactIntel)**
+
+Repository: `Madhusudhan-cy/impactintel`
+
+Production frontend: `https://impactintel.vercel.app`
+
+Production backend: `https://impactintel.onrender.com`
+
+GitHub App: `ImpactIntel-aideveloper`
+
+Backend callback configured in GitHub App settings:
+
+`https://impactintel.onrender.com/api/auth/github/callback`
+
+## 1. Current problem
+
+GitHub authentication is not working consistently.
+
+- When I click Continue with GitHub, the application redirects to GitHub.
+- On my account, the authorization process has behaved differently from my friend's account.
+- On my friend's phone, after authorization, GitHub displays a 404 page and never returns to our application.
+- Previously, the GitHub authorization page displayed this redirect destination:
+
+`https://impactintel.onrender.com`
+
+- The application also previously showed `Failed to load repositories: Not Found`.
+- Directly opening `https://impactintel.onrender.com/api/repos` returns `Not authenticated`, which is expected without an authenticated session.
+
+I suspect there is an issue in the OAuth authorization URL, callback handling, redirect URI, session persistence, or frontend/backend integration.
+
+## 2. Your first task: Inspect the existing implementation
+
+Do not immediately modify code.
+
+Inspect these files and any related authentication code:
+
+Backend:
+- `backend/app/api/routes.py`
+- `backend/app/api/app.py`
+- `backend/app/services/github_oauth.py`
+- Authentication/session middleware
+- GitHub App configuration and token-generation services
+- CORS configuration
+- Webhook configuration, if relevant
+
+Frontend:
+- `frontend/src/pages/LandingPage.jsx`
+- `frontend/src/pages/GitHubCallbackPage.jsx`
+- `frontend/src/api/auth.js`
+- `frontend/src/api/client.js`
+- `frontend/src/api/repositories.js`
+- `frontend/src/components/common/ProtectedRoute.jsx`
+- `frontend/src/App.jsx`
+
+Also inspect:
+- `frontend/vercel.json`
+- `frontend/.env.production`
+- Backend environment variable loading
+- Existing authentication and API tests
+
+Identify the exact cause of the redirect failure.
+
+## 3. Correct GitHub OAuth authorization flow
+
+Implement and verify this complete flow:
+
+1. User opens `https://impactintel.vercel.app`.
+2. User clicks Continue with GitHub.
+3. Frontend requests the backend OAuth authorization URL.
+4. Backend generates a secure, unpredictable OAuth state value.
+5. Backend redirects the browser to GitHub's authorization page with the correct Client ID and `redirect_uri`.
+6. GitHub redirects to:
+
+`https://impactintel.onrender.com/api/auth/github/callback`
+
+7. Backend validates OAuth state.
+8. Backend exchanges the authorization code for an access token using the correct GitHub App OAuth credentials.
+9. Backend retrieves the authenticated GitHub user.
+10. Backend establishes a secure session.
+11. Backend redirects the user to the correct frontend callback route.
+12. Frontend checks authentication and proceeds to repository selection.
+
+Important:
+- Do not confuse the GitHub callback URL with the final frontend redirect URL.
+- Do not redirect users to the backend root URL.
+- Do not send users to a GitHub URL after authentication has already succeeded.
+- Do not hardcode temporary authorization codes or tokens.
+- Do not disable OAuth state validation.
+- Do not introduce mock authentication in production.
+
+## 4. Correct session and cross-origin behavior
+
+The frontend is hosted on Vercel and the backend on Render.
+
+Verify:
+- CORS allows the exact production frontend origin.
+- Credentialed requests are supported.
+- Frontend requests use `credentials: 'include'`.
+- Session cookies have appropriate `Secure`, `HttpOnly`, and `SameSite` settings for this cross-origin architecture.
+- Session cookies are issued on the correct domain.
+- Authentication survives the redirect from GitHub to the backend and then to the frontend.
+- `/auth/me` returns the correct authenticated user after callback.
+- Protected routes do not incorrectly redirect an authenticated user back to login.
+
+Do not solve this by disabling authentication or allowing all origins.
+
+## 5. Correct GitHub App installation and repository access
+
+Remember that GitHub user authentication and GitHub App installation are two different things.
+
+After OAuth login:
+
+1. Identify the authenticated GitHub user.
+2. Check which GitHub App installations that user can access.
+3. If the app is not installed for the user's account or organization, show an installation prompt.
+4. Allow the user to install the app or configure repository access.
+5. After installation, retrieve repositories accessible through the installation.
+6. Display only repositories the authenticated user and installation are authorized to access.
+
+A friend logging into ImpactIntel must not automatically see my repositories.
+
+Do not use my account's repositories as a fallback for another user.
+
+Do not expose GitHub installation tokens, OAuth access tokens, or the GitHub App private key to the browser.
+
+## 6. Verify the GitHub App configuration assumptions
+
+Check the code against these expected settings:
+
+- GitHub App OAuth Client ID.
+- GitHub App OAuth Client Secret.
+- GitHub App ID.
+- GitHub App slug.
+- Private key.
+- Webhook secret.
+- Callback URL.
+- Frontend production URL.
+
+Expected callback:
+
+`https://impactintel.onrender.com/api/auth/github/callback`
+
+Expected frontend:
+
+`https://impactintel.vercel.app`
+
+Do not invent new environment variable names without checking the existing implementation.
+
+If a setting must be changed manually in GitHub, Render, or Vercel, give me the exact setting name and value.
+
+Never print secret values in logs or terminal output.
+
+## 7. Tests required
+
+Add or update tests for:
+
+- OAuth authorization URL generation.
+- Correct redirect URI.
+- OAuth state validation.
+- Invalid or missing OAuth state.
+- Successful callback.
+- OAuth provider errors.
+- Correct frontend redirect after successful authentication.
+- Session creation and persistence.
+- `/auth/me` behavior.
+- Unauthenticated repository access.
+- Authenticated repository listing.
+- User-specific repository isolation.
+- Missing GitHub App installation.
+- Installation with selected repositories.
+- CORS and credential configuration.
+
+Run the complete existing backend and frontend test suites.
+
+Do not weaken or delete existing tests to make them pass.
+
+## 8. Deployment requirements
+
+After implementation:
+
+- Ensure production frontend and backend URLs are correct.
+- Ensure no localhost URL is used in production.
+- Ensure `ALLOW_DEV_BYPASS=false` in production.
+- Ensure Vercel uses the correct `VITE_API_BASE_URL`.
+- Ensure the production build succeeds.
+- Ensure Render deployment can start successfully.
+
+Do not modify or replace my existing Vercel or Render projects.
+
+Do not create a new application.
+
+Do not change unrelated features.
+
+## 9. Final report
+
+When finished, provide:
+
+1. Exact root cause of the GitHub 404.
+2. Files modified.
+3. Explanation of the corrected OAuth flow.
+4. Environment variables that need updating, if any.
+5. GitHub App settings that need updating, if any.
+6. Test results.
+7. Exact Git commands to commit and push the changes.
+
+**Important:** Do not claim the production issue is fixed merely because local tests pass. Clearly distinguish locally verified behavior from behavior that still requires production testing with a second GitHub account.
