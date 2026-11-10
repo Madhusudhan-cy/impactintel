@@ -3,17 +3,26 @@ export function resolveApiUrl(endpoint) {
     return endpoint;
   }
 
-  // Read configured base URL and strip trailing slashes
-  let base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').trim().replace(/\/+$/, '');
+  // Read configured base URL and strip trailing slashes.
+  // VITE_API_BASE_URL must be set in Vercel environment variables to point at
+  // the production backend: https://impactintel.onrender.com/api
+  const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').trim().replace(/\/+$/, '');
 
-  // Normalize endpoint to start with a slash
+  // Normalize endpoint: ensure it starts with exactly one slash
   const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-  // Ensure /api prefix is consistently applied without duplication
-  if (!base.endsWith('/api') && !cleanPath.startsWith('/api/') && cleanPath !== '/api') {
-    base = `${base}/api`;
-  } else if (base.endsWith('/api') && cleanPath.startsWith('/api/')) {
-    base = base.slice(0, -4);
+  // Guard against accidental /api duplication: if the base already ends with /api
+  // and the endpoint also starts with /api/, strip the prefix from the endpoint to
+  // prevent double /api/api/... in the final URL.
+  if (base.endsWith('/api') && cleanPath.startsWith('/api/')) {
+    // e.g. base="https://host/api" + cleanPath="/api/repos" → "https://host/api/repos"
+    return `${base}${cleanPath.slice(4)}`;
+  }
+
+  // If base does not include an /api segment at all, append it so that all
+  // service endpoints (/repos, /auth/me, …) resolve under /api automatically.
+  if (!base.endsWith('/api')) {
+    return `${base}/api${cleanPath}`;
   }
 
   return `${base}${cleanPath}`;
@@ -30,6 +39,9 @@ export async function apiClient(endpoint, options = {}) {
   const url = resolveApiUrl(endpoint);
 
   const response = await fetch(url, {
+    // Include cookies for session-based authentication flows in addition to
+    // the JWT Bearer token carried via the Authorization header.
+    credentials: 'include',
     ...options,
     headers,
   });
