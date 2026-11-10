@@ -160,7 +160,7 @@ class TestOAuthStateValidation:
 
 
 # ===========================================================================
-# Fix 2: Authorization URL is properly URL-encoded
+# Fix 2: Authorization URL is properly URL-encoded and GitHub App compatible
 # ===========================================================================
 
 class TestAuthorizationURL:
@@ -219,6 +219,19 @@ class TestAuthorizationURL:
             url = GitHubOAuthService.get_authorization_url(state=state)
         params = parse_qs(urlparse(url).query)
         assert params["state"][0] == state
+
+    def test_url_does_not_contain_scope_for_github_app(self):
+        """GitHub Apps (client_id prefix Iv23/Iv1) do NOT support the ``scope``
+        query parameter.  Passing ``scope`` causes GitHub to return a 404 page
+        immediately, before any redirect occurs.  Permissions are configured
+        statically in the GitHub App settings dashboard instead."""
+        with patch("app.services.github_oauth.GITHUB_CLIENT_ID", "Iv23liNIEtnXk14suaTc"):
+            state = GitHubOAuthService.generate_oauth_state()
+            url = GitHubOAuthService.get_authorization_url(state=state)
+        params = parse_qs(urlparse(url).query)
+        assert "scope" not in params, (
+            "scope parameter must not be present in GitHub App authorization URL"
+        )
 
 
 # ===========================================================================

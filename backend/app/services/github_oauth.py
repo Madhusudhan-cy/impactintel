@@ -54,7 +54,14 @@ class GitHubOAuthService:
 
     @staticmethod
     def get_authorization_url(state: str) -> str:
-        """Generate GitHub OAuth authorization URL with properly URL-encoded parameters."""
+        """Generate GitHub App user authorization URL with properly URL-encoded parameters.
+
+        Note: The ``scope`` parameter is intentionally omitted.  This application
+        uses a **GitHub App** (client_id prefix ``Iv23``), and GitHub Apps do not
+        support dynamic OAuth scope parameters in the authorization URL.  Permissions
+        are configured statically in the GitHub App settings dashboard.  Passing
+        ``scope`` to a GitHub App authorization URL causes GitHub to return a 404.
+        """
         if not GITHUB_CLIENT_ID:
             if ALLOW_DEV_BYPASS:
                 # Dev fallback redirect
@@ -64,7 +71,6 @@ class GitHubOAuthService:
         params = {
             "client_id": GITHUB_CLIENT_ID,
             "redirect_uri": GITHUB_OAUTH_REDIRECT_URI,
-            "scope": "read:user repo",
             "state": state,
         }
         return f"https://github.com/login/oauth/authorize?{urlencode(params)}"
