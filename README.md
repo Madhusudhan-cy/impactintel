@@ -27,32 +27,6 @@ An intelligent platform that maps software repository structures into a fine-gra
 
 ---
 
-## Increment 4: Conversational Repository Intelligence
-
-* **Semantic Code Chunking**: AST-aligned units (functions, classes, components, routes, files) with metadata preservation.
-* **Triple-Retrieval Hybrid Fusion**:
-  1. **Graph RAG**: Traverses the Code Knowledge Graph (upstream callers/predecessors, downstream callees/successors, tests, and rendering chains).
-  2. **BM25 Keyword Search**: Exact symbol identifiers, camelCase and snake_case token matching.
-  3. **Vector Similarity**: pgvector-compatible normalized embeddings strictly scoped to the repository boundary.
-  * Fused using **Reciprocal Rank Fusion (RRF)**: $RRF(d) = \sum \frac{1}{k + rank(d)}$ with query-intent awareness.
-* **LangGraph Orchestration**:
-  * Multi-stage pipeline: Query Understanding ➔ Parallel Retrieval ➔ LLM Generation ➔ Evidence-based Claim Verification ➔ Conditional Bounded Retry.
-* **Evidence-Based Claim Verification**:
-  * Cross-examines all generated statements against retrieved chunks; flags hallucinations and unsupported claims.
-* **Conversational Memory**:
-  * Repository-scoped short-term history and automatic anaphora resolution (e.g. *"What does the first one do?"*).
-
----
-
-## Increment 5: Full Frontend & GitHub OAuth Platform
-
-* **GitHub OAuth App Authentication**: Seamless login without requiring GitHub App installation. Signed JWT session tokens with local dev bypass.
-* **Repository Hub & Progress Tracking**: Interactive repository selection, AST scanning progress with real-time feedback.
-* **Code Knowledge Graph Explorer**: React Flow visualization with on-demand lazy subgraph expansion, caller/dependency badges, and node details inspection.
-* **PR Impact Visualizer**: Transitive causal propagation chains, affected components, modified diff files, and recommended test suites.
-* **Evidence-Grounded AI Chat UI**: Real-time conversational interface with evidence inspection, claim verification badges, and context-reset conversations.
-* **Analysis Audit History & Repository Settings**: Persistent SQLite/PostgreSQL historical audit records, re-indexing controls, and local repository database management.
-
 ---
 
 ## Canonical Graph Direction & Impact Rules
